@@ -17,11 +17,9 @@ namespace Topshelf.Runtime.Windows
     using System.Reflection;
     using System.ServiceProcess;
     using System.Threading;
-#if !NET35
     using System.Threading.Tasks;
-#endif
     using Logging;
-    using Topshelf.HostConfigurators;
+    using HostConfigurators;
 
     public class WindowsServiceHost :
         ServiceBase,
@@ -51,6 +49,7 @@ namespace Topshelf.Runtime.Windows
 
             CanPauseAndContinue = settings.CanPauseAndContinue;
             CanShutdown = settings.CanShutdown;
+            CanHandlePowerEvent = settings.CanHandlePowerEvent;
             CanHandleSessionChangeEvent = settings.CanSessionChanged;
             ServiceName = _settings.ServiceName;
         }
@@ -132,6 +131,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Fatal("The service did not start successfully", ex);
 
                 ExitCode = (int)TopshelfExitCode.StartServiceFailed;
@@ -152,6 +153,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Fatal("The service did not shut down gracefully", ex);
                 ExitCode = (int)TopshelfExitCode.StopServiceFailed;
                 throw;
@@ -178,6 +181,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Fatal("The service did not pause gracefully", ex);
                 throw;
             }
@@ -196,6 +201,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Fatal("The service did not resume successfully", ex);
                 throw;
             }
@@ -213,6 +220,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Fatal("The service did not shut down gracefully", ex);
                 ExitCode = (int)TopshelfExitCode.StopServiceFailed;
                 throw;
@@ -229,14 +238,41 @@ namespace Topshelf.Runtime.Windows
 
                 _serviceHandle.SessionChanged(this, arguments);
 
-                _log.Info("[Topshelf] Stopped");
+                _log.Info("[Topshelf] Service session changed handled");
             }
             catch (Exception ex)
             {
-                _log.Fatal("The service did not shut down gracefully", ex);
+                _settings.ExceptionCallback?.Invoke(ex);
+
+                _log.Fatal("The did not handle Service session change correctly", ex);
                 ExitCode = (int)TopshelfExitCode.StopServiceFailed;
                 throw;
             }
+        }
+
+        protected override bool OnPowerEvent(PowerBroadcastStatus powerStatus)
+        {
+            try
+            {
+                _log.Info("[Topshelf] Power event raised");
+
+                var arguments = new WindowsPowerEventArguments(powerStatus);
+
+                var result = _serviceHandle.PowerEvent(this, arguments);
+
+                _log.Info("[Topshelf] Power event handled");
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _settings.ExceptionCallback?.Invoke(ex);
+
+                _log.Fatal("The service did handle the Power event correctly", ex);
+                ExitCode = (int)TopshelfExitCode.StopServiceFailed;
+                throw;
+            }
+
         }
 
         protected override void OnCustomCommand(int command)
@@ -251,6 +287,8 @@ namespace Topshelf.Runtime.Windows
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Error("Unhandled exception during custom command processing detected", ex);
             }
         }
@@ -270,6 +308,8 @@ namespace Topshelf.Runtime.Windows
 
         void CatchUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
+            _settings.ExceptionCallback?.Invoke((Exception)e.ExceptionObject);
+
             _log.Fatal("The service threw an unhandled exception", (Exception)e.ExceptionObject);
 
             HostLogger.Shutdown();
@@ -280,16 +320,14 @@ namespace Topshelf.Runtime.Windows
 //          This needs to be a configuration option to avoid breaking compatibility
 
             ExitCode = (int)TopshelfExitCode.UnhandledServiceException;
-            _unhandledException = e.ExceptionObject as Exception;
+            _unhandledException = (Exception) e.ExceptionObject;
 
             Stop();
 
 
-#if !NET35
             // it isn't likely that a TPL thread should land here, but if it does let's no block it
             if (Task.CurrentId.HasValue)
                 return;
-#endif
 
             int deadThreadId = Interlocked.Increment(ref _deadThread);
             Thread.CurrentThread.IsBackground = true;
@@ -321,6 +359,23 @@ namespace Topshelf.Runtime.Windows
             public int SessionId
             {
                 get { return _sessionId; }
+            }
+        }
+
+        class WindowsPowerEventArguments :
+            PowerEventArguments
+        {
+            readonly PowerEventCode _eventCode;
+
+            public WindowsPowerEventArguments(PowerBroadcastStatus powerStatus)
+            {
+                _eventCode = (PowerEventCode) Enum.ToObject(typeof(PowerEventCode), (int)powerStatus);
+            }
+
+
+            public PowerEventCode EventCode
+            {
+                get { return _eventCode; }
             }
         }
     }

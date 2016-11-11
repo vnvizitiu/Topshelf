@@ -64,7 +64,7 @@ namespace Topshelf.HostConfigurators
                 yield return this.Failure("Name", "must be specified and not empty");
             else
             {
-                var disallowed = new[] {' ', '\t', '\r', '\n', '\\', '/'};
+                var disallowed = new[] {'\t', '\r', '\n', '\\', '/'};
                 if (_settings.Name.IndexOfAny(disallowed) >= 0)
                     yield return this.Failure("Name", "must not contain whitespace, '/', or '\\' characters");
             }
@@ -180,6 +180,11 @@ namespace Topshelf.HostConfigurators
             var configurator = new CommandLineDefinitionConfigurator(name, callback);
 
             _commandLineOptionConfigurators.Add(configurator);
+        }
+
+        public void OnException(Action<Exception> callback)
+        {
+            _settings.ExceptionCallback = callback;
         }
 
         public Host CreateHost()

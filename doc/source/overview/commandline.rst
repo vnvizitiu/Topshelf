@@ -37,9 +37,13 @@ The help text from the command line is shown below for easy reference.
       -servicename      The name that the service should use when
                         installing
       -description      The service description the service should use when
-                        installing
+                        installing. 
+                        Eg: -description: MyService
+                        Eg: -description "My Service"
       -displayname      The display name the the service should use when
                         installing
+                        Eg: -displayname: MyService
+                        Eg: -displayname "My Service"
 
     **start**             Starts the service if it is not already running
 
@@ -54,3 +58,17 @@ The help text from the command line is shown below for easy reference.
       -instance         An instance name if registering the service
                         multiple times
       --sudo            Prompts for UAC if running on Vista/W7/2008
+
+
+Examples
+''''''''
+    
+**Basic Service Installation**
+
+    MyService.exe install -username:DOMAIN\ServiceAccount -password:itsASecret -servicename:AwesomeService --autostart
+    
+**Service Installation with Quoted Arguments**
+
+    MyService.exe install -username "DOMAIN\Service Account" -password:"Its A Secret" -servicename "Awesome Service" --autostart
+    
+    

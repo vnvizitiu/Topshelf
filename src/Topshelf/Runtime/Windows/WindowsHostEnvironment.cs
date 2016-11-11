@@ -22,7 +22,7 @@ namespace Topshelf.Runtime.Windows
     using System.Security.Principal;
     using System.ServiceProcess;
     using Logging;
-    using Topshelf.HostConfigurators;
+    using HostConfigurators;
 
     public class WindowsHostEnvironment :
         HostEnvironment
@@ -206,14 +206,36 @@ namespace Topshelf.Runtime.Windows
             }
         }
 
-        public void InstallService(InstallHostSettings settings, Action beforeInstall, Action afterInstall, Action beforeRollback, Action afterRollback)
+        public void InstallService(InstallHostSettings settings, Action<InstallHostSettings> beforeInstall, Action afterInstall, Action beforeRollback, Action afterRollback)
         {
             using (var installer = new HostServiceInstaller(settings))
             {
                 Action<InstallEventArgs> before = x =>
                     {
                         if (beforeInstall != null)
-                            beforeInstall();
+                        {
+                            beforeInstall(settings);
+                            installer.ServiceProcessInstaller.Username = settings.Credentials.Username;
+                            installer.ServiceProcessInstaller.Account = settings.Credentials.Account;
+
+                            // Group Managed Service Account (gMSA) workaround per
+                            // https://connect.microsoft.com/VisualStudio/feedback/details/795196/service-process-installer-should-support-virtual-service-accounts
+                            if (settings.Credentials.Account == ServiceAccount.User &&
+                                settings.Credentials.Username != null &&
+                                settings.Credentials.Username.EndsWith("$", StringComparison.InvariantCulture))
+                            {
+                                _log.InfoFormat("Installing as gMSA {0}.", settings.Credentials.Username);
+                                installer.ServiceProcessInstaller.Password = null;
+                                installer.ServiceProcessInstaller
+                                    .GetType()
+                                    .GetField("haveLoginInfo", BindingFlags.Instance | BindingFlags.NonPublic)
+                                    .SetValue(installer.ServiceProcessInstaller, true);
+                            }
+                            else
+                            {
+                                installer.ServiceProcessInstaller.Password = settings.Credentials.Password;
+                            }
+                        }
                     };
 
                 Action<InstallEventArgs> after = x =>
@@ -305,7 +327,7 @@ namespace Topshelf.Runtime.Windows
             try
             {
                 result = ServiceController.GetServices()
-                                    .Any(service => string.CompareOrdinal(service.ServiceName, serviceName) == 0);
+                    .Any(service => string.Equals(service.ServiceName, serviceName, StringComparison.OrdinalIgnoreCase));
             }
             catch (InvalidOperationException)
             {

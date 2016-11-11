@@ -76,7 +76,6 @@ namespace Topshelf.HostConfigurators
         /// <summary>
         ///   Sets the service builder to use for creating the service
         /// </summary>
-        /// <typeparam name="T"> </typeparam>
         /// <param name="serviceBuilderFactory"> </param>
         void UseServiceBuilder(ServiceBuilderFactory serviceBuilderFactory);
 
@@ -107,6 +106,7 @@ namespace Topshelf.HostConfigurators
         /// Adds a command line switch (--name) that can be either true or false. Switches are CASE SeNsITiVe
         /// </summary>
         /// <param name="name">The name of the switch, as it will appear on the command line</param>
+        /// <param name="callback"></param>
         void AddCommandLineSwitch(string name, Action<bool> callback);
 
         /// <summary>
@@ -114,7 +114,16 @@ namespace Topshelf.HostConfigurators
         /// definition 
         /// </summary>
         /// <param name="name"></param>
-        /// <param name="value"></param>
+        /// <param name="callback"></param>
         void AddCommandLineDefinition(string name, Action<string> callback);
+
+        /// <summary>
+        /// Specifies a callback to be run when Topshelf encounters an exception while starting, running
+        /// or stopping. This callback does not replace Topshelf's default handling of any exceptions, and 
+        /// is intended to allow for local cleanup, logging, etc. This is not required, and is only invoked
+        /// if a callback is provided.
+        /// </summary>
+        /// <param name="callback">The action to run when an exception occurs.</param>
+        void OnException(Action<Exception> callback);
     }
 }

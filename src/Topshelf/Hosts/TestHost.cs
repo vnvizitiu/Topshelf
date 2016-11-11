@@ -61,6 +61,8 @@ namespace Topshelf.Hosts
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Error("The service threw an exception during testing.", ex);
             }
             finally

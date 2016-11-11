@@ -53,6 +53,11 @@ namespace Topshelf.Hosts
             {
                 SystemEvents.SessionSwitch += OnSessionChanged;
             }
+
+            if (settings.CanHandlePowerEvent)
+            {
+                SystemEvents.PowerModeChanged += OnPowerModeChanged;
+            }
         }
 
         void OnSessionChanged(object sender, SessionSwitchEventArgs e)
@@ -60,6 +65,13 @@ namespace Topshelf.Hosts
             var arguments = new ConsoleSessionChangedArguments(e.Reason);
 
             _serviceHandle.SessionChanged(this, arguments);
+        }
+
+        void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            var arguments = new ConsolePowerEventArguments(e.Mode);
+
+            _serviceHandle.PowerEvent(this, arguments);
         }
 
 
@@ -102,6 +114,8 @@ namespace Topshelf.Hosts
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Error("An exception occurred", ex);
 
                 return TopshelfExitCode.AbnormalExit;
@@ -144,6 +158,8 @@ namespace Topshelf.Hosts
 
         void CatchUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
+            _settings.ExceptionCallback?.Invoke((Exception)e.ExceptionObject);
+
             _log.Fatal("The service threw an unhandled exception", (Exception)e.ExceptionObject);
 
             HostLogger.Shutdown();
@@ -185,6 +201,8 @@ namespace Topshelf.Hosts
             }
             catch (Exception ex)
             {
+                _settings.ExceptionCallback?.Invoke(ex);
+
                 _log.Error("The service did not shut down gracefully", ex);
             }
             finally
@@ -243,6 +261,34 @@ namespace Topshelf.Hosts
             public int SessionId
             {
                 get { return _sessionId; }
+            }
+        }
+
+        class ConsolePowerEventArguments :
+            PowerEventArguments
+        {
+            readonly PowerEventCode _eventCode;
+            public ConsolePowerEventArguments(PowerModes powerMode)
+            {
+                switch (powerMode)
+                {
+                    case PowerModes.Resume:
+                        _eventCode = PowerEventCode.ResumeAutomatic; 
+                        break;
+                    case PowerModes.StatusChange:
+                        _eventCode = PowerEventCode.PowerStatusChange;
+                        break;
+                    case PowerModes.Suspend:
+                        _eventCode = PowerEventCode.Suspend;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(powerMode), powerMode, null);
+                }
+            }
+
+            public PowerEventCode EventCode
+            {
+                get { return _eventCode; }
             }
         }
     }

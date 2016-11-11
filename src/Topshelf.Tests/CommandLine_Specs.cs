@@ -74,6 +74,21 @@ namespace Topshelf.Tests
         }
 
         [Test]
+        public void Should_create_an_install_host_with_service_name_no_quotes()
+        {
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -servicename Joe");
+            });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe", installHost.Settings.Name);
+            Assert.AreEqual("Joe", installHost.Settings.ServiceName);
+        }
+
+        [Test]
         public void Should_create_an_install_host_with_display_name()
         {
             Host host = HostFactory.New(x =>
@@ -102,12 +117,40 @@ namespace Topshelf.Tests
         }
 
         [Test]
+        public void Should_create_an_install_host_with_display_name_and_instance_name_no_quotes()
+        {
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -displayname Joe -instance 42");
+            });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe (Instance: 42)", installHost.Settings.DisplayName);
+        }
+
+        [Test]
         public void Should_create_an_install_host_with_display_name_with_instance_name()
         {
             Host host = HostFactory.New(x =>
             {
                 x.Service<MyService>();
                 x.ApplyCommandLine("install -displayname \"Joe (Instance: 42)\" -instance \"42\"");
+            });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe (Instance: 42)", installHost.Settings.DisplayName);
+        }
+
+        [Test]
+        public void Should_create_an_install_host_with_display_name_with_instance_name_no_quotes()
+        {
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -displayname \"Joe (Instance: 42)\" -instance 42");
             });
 
             Assert.IsInstanceOf<InstallHost>(host);
@@ -133,16 +176,48 @@ namespace Topshelf.Tests
         public void Should_create_an_install_host_with_service_name_and_instance_name()
         {
             Host host = HostFactory.New(x =>
-                {
-                    x.Service<MyService>();
-                    x.ApplyCommandLine("install -servicename \"Joe\" -instance \"42\"");
-                });
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -servicename \"Joe\" -instance \"42\"");
+            });
 
             Assert.IsInstanceOf<InstallHost>(host);
             var installHost = (InstallHost)host;
             Assert.AreEqual("Joe", installHost.Settings.Name);
             Assert.AreEqual("42", installHost.Settings.InstanceName);
             Assert.AreEqual("Joe$42", installHost.Settings.ServiceName);
+        }
+
+        [Test]
+        public void Should_create_an_install_host_with_service_name_and_instance_name_no_quotes()
+        {
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -servicename Joe -instance 42");
+            });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe", installHost.Settings.Name);
+            Assert.AreEqual("42", installHost.Settings.InstanceName);
+            Assert.AreEqual("Joe$42", installHost.Settings.ServiceName);
+        }
+
+        [Test]
+        public void Should_create_and_install_host_with_service_name_containing_space()
+        {
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+                x.ApplyCommandLine("install -servicename \"Joe's Service\" -instance \"42\"");
+            });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe's Service", installHost.Settings.Name);
+            Assert.AreEqual("42", installHost.Settings.InstanceName);
+            Assert.AreEqual("Joe's Service$42", installHost.Settings.ServiceName);
         }
 
         [Test]
@@ -304,6 +379,23 @@ namespace Topshelf.Tests
         }
 
         [Test]
+        public void Need_to_handle_crazy_special_characters_in_argument_no_quotes()
+        {
+            string password = null;
+
+            Host host = HostFactory.New(x =>
+            {
+                x.Service<MyService>();
+
+                x.AddCommandLineDefinition("password", v => password = v);
+
+                x.ApplyCommandLine("-password abc123=:,.<>/?;!@#$%^&*()-+");
+            });
+
+            Assert.AreEqual("abc123=:,.<>/?;!@#$%^&*()-+", password);
+        }
+
+        [Test]
         public void Extensible_the_command_line_should_be_yet_again()
         {
             string volumeLevel = null;
@@ -318,6 +410,34 @@ namespace Topshelf.Tests
                 });
 
             Assert.AreEqual("11", volumeLevel);
+        }
+
+        [Test]
+        public void Should_require_password_option_when_specifying_username()
+        {
+            Assert.Throws<Topshelf.HostConfigurationException>(() =>
+            {
+                Host host = HostFactory.New(x =>
+                {
+                    x.Service<MyService>();
+                    x.ApplyCommandLine("install -username \"Joe\"");
+                });
+            });
+        }
+
+        [Test]
+        public void Will_allow_blank_password_when_specifying_username()
+        {
+            Host host = HostFactory.New(x =>
+                {
+                    x.Service<MyService>();
+                    x.ApplyCommandLine("install -username \"Joe\" -password \"\"");
+                });
+
+            Assert.IsInstanceOf<InstallHost>(host);
+            var installHost = (InstallHost)host;
+            Assert.AreEqual("Joe", installHost.InstallSettings.Credentials.Username);
+            Assert.AreEqual("", installHost.InstallSettings.Credentials.Password);
         }
 
         class MyService : ServiceControl
