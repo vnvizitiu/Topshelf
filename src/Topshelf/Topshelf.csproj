@@ -113,6 +113,7 @@
     <Compile Include="Configuration\DependencyExtensions.cs" />
     <Compile Include="Configuration\HostConfigurators\DependencyHostConfigurator.cs" />
     <Compile Include="Configuration\HostConfigurators\EnvironmentBuilderFactory.cs" />
+    <Compile Include="Configuration\HostConfigurators\RunAsVirtualAccountHostConfigurator.cs" />
     <Compile Include="Configuration\HostConfigurators\SystemOnlyHelpHostConfigurator.cs" />
     <Compile Include="Configuration\HostConfigurators\HostBuilderConfigurator.cs" />
     <Compile Include="Configuration\HostConfigurators\HostBuilderFactory.cs" />
@@ -218,6 +219,7 @@
     <Compile Include="Runtime\Windows\RestartSystemRecoveryAction.cs" />
     <Compile Include="Runtime\Windows\RunProgramRecoveryAction.cs" />
     <Compile Include="Runtime\Windows\SafeTokenHandle.cs" />
+    <Compile Include="Runtime\Windows\SCMHandle.cs" />
     <Compile Include="Runtime\Windows\ServiceRecoveryAction.cs" />
     <Compile Include="Runtime\Windows\ServiceRecoveryOptions.cs" />
     <Compile Include="Runtime\Windows\WindowsHostEnvironment.cs" />
